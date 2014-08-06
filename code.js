@@ -49,27 +49,27 @@ CanvasState.prototype.draw = function() {
 CanvasState.prototype.pickRandomVertex = function() {
   var r = Math.random();
   if(r < 0.33) {
-	  return this.p1;
+    return this.p1;
   }
   else if(r < 0.66) {
-	  return this.p2;
+    return this.p2;
   }
   else {
-	  return this.p3;
+    return this.p3;
   }
 }
 
 CanvasState.prototype.calculateNextP = function(currentP, targetP) {
-	var nextP = {x: (currentP.x + targetP.x)/2, y: (currentP.y + targetP.y)/2}
-	return nextP;
+  var nextP = {x: (currentP.x + targetP.x)/2, y: (currentP.y + targetP.y)/2}
+  return nextP;
 }
 
 CanvasState.prototype.drawSierpinski = function() {
   var i = 0;
   var p = {x: 1, y:1};
   for(i = 0; i < 100000; i++) {
-	p = this.calculateNextP(p, this.pickRandomVertex());
-	this.drawPixel(p);
+  p = this.calculateNextP(p, this.pickRandomVertex());
+  this.drawPixel(p);
   }
 }
 
