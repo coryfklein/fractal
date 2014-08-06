@@ -48,10 +48,7 @@ CanvasState.prototype.generatePalette = function() {
     var i;
     for(i = 0; i < colorsPerKey; i++) {
       var percent = i / colorsPerKey;
-      var r = Math.floor((secondColor.r - firstColor.r) * percent + firstColor.r);
-      var g = Math.floor((secondColor.g - firstColor.g) * percent + firstColor.g);
-      var b = Math.floor((secondColor.b - firstColor.b) * percent + firstColor.b);
-      colors.push({r: r, g: g, b: b});
+      colors.push(this.interpolateColor(firstColor, secondColor, percent));
     }
   }
 
@@ -110,8 +107,14 @@ CanvasState.prototype.drawMandelbrot = function() {
 CanvasState.prototype.mapPixelToComplex = function(p) {
   var minR = -2;
   var maxR = 1;
-  var minI = -1;
-  var maxI = 1;
+  var minI = -1.5;
+  var maxI = 1.5;
+  /*
+  var minR = -1.1659;
+  var maxR = -1.1658;
+  var minI = 0.194225;
+  var maxI = 0.194075;
+  */
 
   var percentX = p.x / this.width;
   var percentY = p.y / this.height;
@@ -123,32 +126,53 @@ CanvasState.prototype.drawMandelbrotPixel = function(x,y) {
   var p = {x: x, y: y};
   var c = this.mapPixelToComplex(p);
   var iteration = 0;
-  var maxIteration = 1000;
-  var colorRotationPercent = 0.01;
+  var maxIteration = 30;
+  var colorRotationPercent = 1.0;
   var colorIteration = maxIteration * colorRotationPercent;
 
   var r = c.r;
   var i = c.i;
 
-  while(r*r + i*i < 2*2 && iteration < maxIteration) {
+  while(r*r + i*i < 256 && iteration < maxIteration) {
     rnext = r*r - i*i + c.r;
     i = 2 * r * i + c.i;
     r = rnext;
     iteration++;
   }
 
-  var colorPercent = (iteration % colorIteration) / colorIteration;
+  var color;
+  var zn;
+  var nu;
+  var newiteration;
+  if(iteration < maxIteration) {
+    zn = Math.sqrt(r*r + i*i);
+    nu = Math.log( Math.log(zn) / Math.log(2) ) / Math.log(2);
+    newiteration = (iteration + 1 - nu) % colorIteration;
+    var color1 = this.palette[Math.floor(newiteration / maxIteration * this.palette.length)];
+    var color2 = this.palette[Math.min(Math.floor(newiteration / maxIteration * this.palette.length) + 1, this.palette.length - 1)];
+    color = this.interpolateColor(color1, color2, iteration % 1);
+  }
+  else {
+    color = {r:0, g:0, b:0};
+  }
+
+  //var colorPercent = (iteration % colorIteration) / colorIteration;
   //var colorPercent = iteration / maxIteration;
-  var colorIndex = Math.min(Math.floor(colorPercent * this.palette.length), this.palette.length - 1);
-  var color = this.palette[colorIndex];
+  //var colorIndex = Math.min(Math.floor(colorPercent * this.palette.length), this.palette.length - 1);
+  //color = this.palette[colorIndex];
   var d = this.d;
   d[0] = color.r;
   d[1] = color.g;
   d[2] = color.b;
 
   this.drawPixel(p);
+}
 
-  return iteration === maxIteration;
+CanvasState.prototype.interpolateColor = function(c1, c2, percent) {
+  var r = Math.floor((c2.r - c1.r) * percent + c1.r);
+  var g = Math.floor((c2.g - c1.g) * percent + c1.g);
+  var b = Math.floor((c2.b - c1.b) * percent + c1.b);
+  return {r: r, g: g, b: b};
 }
 
 CanvasState.prototype.drawPalette = function() {

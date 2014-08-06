@@ -1,3 +1,7 @@
 canvas {
   border: 1px solid black;
 }
+
+.palette {
+  margin-top: 8px;
+}
