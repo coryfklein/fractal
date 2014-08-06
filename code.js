@@ -1,5 +1,6 @@
-function CanvasState(canvas) {
+function CanvasState(canvas, type) {
   this.canvas = canvas;
+  this.type = type;
   this.width = canvas.width;
   this.height = canvas.height;
 
@@ -25,25 +26,46 @@ function CanvasState(canvas) {
   this.p2 = p2;
   this.p3 = p3;
 
+  this.palette = this.generatePalette();
+
   this.draw();
 }
 
-CanvasState.prototype.draw = function() {
-  var context = this.context;
-  context.fillStyle = '#000000';
-  context.fillRect(0, 0, this.width, this.height);
+CanvasState.prototype.generatePalette = function() {
+  var keyColors = [ {r:  0, g:  8, b:101},
+                    {r:255, g:255, b:255},
+                    {r:246, g:162, b:  0},
+                    {r:  0, g:  0, b:  0} ];
 
-  var i = 0;
-  for(i = 0; i < 100; i = i+1) {
-    //this.drawPixel(i+20,i);
+  var numColors = 500;
+  var colorsPerKey = numColors / keyColors.length;
+  var colors = [];
+
+  var key = 0;
+  for(key = 0; key < keyColors.length; key++) {
+    var firstColor = keyColors[key];
+    var secondColor = keyColors[(key + 1) % keyColors.length];
+    var i;
+    for(i = 0; i < colorsPerKey; i++) {
+      var percent = i / colorsPerKey;
+      var r = Math.floor((secondColor.r - firstColor.r) * percent + firstColor.r);
+      var g = Math.floor((secondColor.g - firstColor.g) * percent + firstColor.g);
+      var b = Math.floor((secondColor.b - firstColor.b) * percent + firstColor.b);
+      colors.push({r: r, g: g, b: b});
+    }
   }
 
-  var p1 = this.p1;
-  var p2 = this.p2;
-  var p3 = this.p3;
-  // this.drawLine(p1, p3);
+  return colors;
+}
 
-  this.drawSierpinski();
+CanvasState.prototype.draw = function() {
+  if(this.type === 'fractal') {
+    //this.drawSierpinski();
+    this.drawMandelbrot();
+  }
+  else if(this.type === 'palette') {
+    this.drawPalette();
+  }
 }
 
 CanvasState.prototype.pickRandomVertex = function() {
@@ -73,8 +95,90 @@ CanvasState.prototype.drawSierpinski = function() {
   }
 }
 
+CanvasState.prototype.drawMandelbrot = function() {
+  var x = 0;
+  var y = 0;
+  var w = this.width;
+  var h = this.height;
+  for(y = 0; y < h; y++) {
+    for(x = 0; x < w; x++) {
+      this.drawMandelbrotPixel(x, y);
+    }
+  }
+}
+
+CanvasState.prototype.mapPixelToComplex = function(p) {
+  var minR = -2;
+  var maxR = 1;
+  var minI = -1;
+  var maxI = 1;
+
+  var percentX = p.x / this.width;
+  var percentY = p.y / this.height;
+
+  return {r: percentX * (maxR - minR) + minR, i: percentY * (maxI - minI) + minI};
+}
+
+CanvasState.prototype.drawMandelbrotPixel = function(x,y) {
+  var p = {x: x, y: y};
+  var c = this.mapPixelToComplex(p);
+  var iteration = 0;
+  var maxIteration = 1000;
+  var colorRotationPercent = 0.01;
+  var colorIteration = maxIteration * colorRotationPercent;
+
+  var r = c.r;
+  var i = c.i;
+
+  while(r*r + i*i < 2*2 && iteration < maxIteration) {
+    rnext = r*r - i*i + c.r;
+    i = 2 * r * i + c.i;
+    r = rnext;
+    iteration++;
+  }
+
+  var colorPercent = (iteration % colorIteration) / colorIteration;
+  //var colorPercent = iteration / maxIteration;
+  var colorIndex = Math.min(Math.floor(colorPercent * this.palette.length), this.palette.length - 1);
+  var color = this.palette[colorIndex];
+  var d = this.d;
+  d[0] = color.r;
+  d[1] = color.g;
+  d[2] = color.b;
+
+  this.drawPixel(p);
+
+  return iteration === maxIteration;
+}
+
+CanvasState.prototype.drawPalette = function() {
+  var x;
+  for(x = 0; x < this.width; x++) {
+    var index = Math.floor(x / this.width * this.palette.length);
+    this.drawLineOfColor({x: x, y: 0}, {x: x, y: this.height}, this.palette[index]);
+  }
+}
+
+CanvasState.prototype.convertColor = function(c) {
+  return 'rgb('+c.r+','+c.g+','+c.b+')';
+}
+
 CanvasState.prototype.drawPixel = function(p) {
   this.context.putImageData(this.id, p.x, p.y)
+}
+
+CanvasState.prototype.drawLineOfColor = function(p1, p2, color) {
+  var context = this.context;
+
+  context.fillStyle = this.convertColor(color);
+  context.strokeStyle = this.convertColor(color);
+
+  context.beginPath();
+  context.moveTo(p1.x, p1.y);
+  context.lineTo(p2.x, p2.y);
+  context.lineWidth = 2;
+  context.stroke();
+  context.closePath();
 }
 
 CanvasState.prototype.drawLine = function(p1, p2) {
@@ -92,7 +196,8 @@ CanvasState.prototype.drawLine = function(p1, p2) {
 }
 
 function init() {
-  var s = new CanvasState(document.getElementById('canvas'));
+  var s = new CanvasState(document.getElementById('canvas'), 'fractal');
+  var s2 = new CanvasState(document.getElementById('palette'), 'palette');
 }
 
 $(document).ready(init);
